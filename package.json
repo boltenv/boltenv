@@ -1,0 +1,72 @@
+{
+  "name": "@boltenv.dev/cli",
+  "version": "3.6.0",
+  "description": "AirDrop for .env files — push/pull env vars via GitHub repo access",
+  "type": "module",
+  "bin": {
+    "boltenv": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc --project tsconfig.build.json",
+    "dev": "tsx src/index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint src/ tests/",
+    "format": "prettier --write .",
+    "typecheck": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "files": [
+    "dist/"
+  ],
+  "homepage": "https://boltenv.dev",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/boltenv/boltenv"
+  },
+  "bugs": {
+    "url": "https://github.com/boltenv/boltenv/issues"
+  },
+  "keywords": [
+    "env",
+    "dotenv",
+    "environment-variables",
+    "secrets",
+    "secrets-management",
+    "encryption",
+    "aes-256-gcm",
+    "zero-knowledge",
+    "github",
+    "team",
+    "cli",
+    "devtools",
+    "devops",
+    "ci-cd",
+    "docker",
+    "env-sync",
+    "env-management",
+    "encrypted-env",
+    "dotenv-vault",
+    "infisical"
+  ],
+  "license": "FSL-1.1-MIT",
+  "dependencies": {
+    "@inquirer/prompts": "^8.3.2",
+    "commander": "^14.0.3",
+    "dotenv": "^17.3.1",
+    "ora": "^9.3.0",
+    "picocolors": "^1.1.1",
+    "yaml": "^2.8.3",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "@vitest/coverage-v8": "^4.1.2",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2",
+    "vitest": "^4.1.2"
+  }
+}

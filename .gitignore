@@ -1,0 +1,36 @@
+node_modules/
+dist/
+bin/
+*.tsbuildinfo
+
+# Environment files (secrets)
+.env
+.env.*
+!.env.example
+
+# boltenv local state (keys, auth — NEVER commit these)
+.boltenv/
+
+# Build/test output
+coverage/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor/IDE
+.claude
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Generated docs
+docs/
+
+# Web frontend (separate deployment)
+web/
+
+TEAM-OVERVIEW.md
+
+admin/

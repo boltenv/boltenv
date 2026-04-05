@@ -1,0 +1,11 @@
+version: 2
+defaultEnvironment: development
+ttl: 7d
+
+environments:
+  production:
+    ttl: 90d
+  staging:
+    ttl: 30d
+  development:
+    ttl: 7d
