@@ -25,6 +25,7 @@ import {
   GitHubRepoPermissionsSchema,
 } from '../utils/validators.js';
 import { Errors, sanitizeForTerminal } from '../utils/errors.js';
+import { classifyGitHubResponse } from './github-error-classifier.js';
 
 /** Callbacks for the login UI (spinner/prompt feedback) */
 export interface LoginCallbacks {
@@ -207,14 +208,19 @@ export async function checkRepoAccess(
     throw Errors.apiRequestFailed(0, 'Failed to verify repo access — check your network connection.');
   }
 
+  // Classify 401/403/429 into targeted errors (SAML, rate limit, token
+  // invalid) so the user gets a specific fix, not a generic "none".
+  // Header + status only — no body consumption.
+  if (response.status === 401 || response.status === 403 || response.status === 429) {
+    const classified = classifyGitHubResponse(response, repoFullName);
+    if (classified) throw classified;
+  }
+
+  // 403 or 404 with no classifier match → treat as no access (legacy behavior).
   if (response.status === 404 || response.status === 403) {
     return 'none';
   }
 
-  // Don't silently map 5xx/429 to 'none' — that denies legitimate users
-  if (response.status === 429) {
-    throw Errors.apiRequestFailed(429, 'GitHub API rate limit exceeded. Wait a few minutes and try again.');
-  }
   if (response.status >= 500) {
     throw Errors.apiRequestFailed(response.status, 'GitHub API is temporarily unavailable. Try again shortly.');
   }

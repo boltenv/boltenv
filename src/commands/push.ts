@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { Command } from 'commander';
-import { checkbox, confirm } from '@inquirer/prompts';
+import { checkbox, confirm, select } from '@inquirer/prompts';
 import ora from 'ora';
 import pc from 'picocolors';
 import { loadCommandContext, getActorName, requireWriteAccess } from './shared.js';
@@ -19,6 +19,24 @@ import { Errors } from '../utils/errors.js';
 import { actionSuccess, hint } from '../utils/branding.js';
 import type { EncryptedBlob, EnvEntry } from '../types/index.js';
 import type { ApiClient } from '../core/api-client.js';
+
+const TTL_CHOICES = [
+  { name: 'Permanent (no expiry)', value: 'permanent' },
+  { name: '90 days', value: '90d' },
+  { name: '30 days', value: '30d' },
+  { name: '7 days', value: '7d' },
+  { name: '24 hours', value: '24h' },
+  { name: '1 hour', value: '1h' },
+] as const;
+
+async function promptTtl(): Promise<number | undefined> {
+  const chosen = await select({
+    message: 'How long should this be available?',
+    choices: [...TTL_CHOICES],
+    default: 'permanent',
+  });
+  return chosen === 'permanent' ? undefined : parseTtl(chosen);
+}
 
 function maskValue(value: string): string {
   if (value.length === 0) return '(empty)';
@@ -101,6 +119,8 @@ async function pushSingleFile(file: string, options: PushOptions): Promise<void>
   let ttlSeconds: number | undefined;
   if (options.ttl) {
     ttlSeconds = options.ttl === 'permanent' ? undefined : parseTtl(options.ttl);
+  } else if (!options.yes) {
+    ttlSeconds = await promptTtl();
   }
 
   let masterKey = loadRepoKey(ctx.repo.fullName);
@@ -116,11 +136,13 @@ async function pushSingleFile(file: string, options: PushOptions): Promise<void>
   assertSafeFilename(filename);
   const envKey = buildEnvKey(environment, filename);
 
+  const ttlLabel = ttlSeconds !== undefined ? formatTtl(ttlSeconds) : pc.green('permanent');
+
   if (!options.yes) {
     console.log(`  ${pc.dim('Target')}  ${pc.cyan(ctx.repo.fullName)}:${pc.yellow(envKey)}`);
     console.log(`  ${pc.dim('File')}    ${pc.white(filename)}`);
     console.log(`  ${pc.dim('Keys')}    ${selectedEntries.map((e) => e.key).join(', ')}`);
-    console.log(`  ${pc.dim('TTL')}     ${options.ttl ?? pc.green('permanent')}`);
+    console.log(`  ${pc.dim('TTL')}     ${ttlLabel}`);
     console.log(`  ${pc.dim('Key')}     ${pc.dim(keyFingerprint(masterKey))}${isNewKey ? pc.green(' (new)') : ''}`);
     console.log();
 
@@ -275,6 +297,8 @@ async function pushDiscovered(options: PushOptions): Promise<void> {
   let ttlSeconds: number | undefined;
   if (options.ttl) {
     ttlSeconds = options.ttl === 'permanent' ? undefined : parseTtl(options.ttl);
+  } else if (!options.yes) {
+    ttlSeconds = await promptTtl();
   }
 
   const api = createApiClient({
@@ -283,12 +307,14 @@ async function pushDiscovered(options: PushOptions): Promise<void> {
     repo: ctx.repo.fullName,
   });
 
+  const ttlLabel = ttlSeconds !== undefined ? formatTtl(ttlSeconds) : pc.green('permanent');
+
   // Step 5: Confirm
   if (!options.yes) {
     console.log();
     console.log(`  ${pc.dim('Target')}  ${pc.cyan(ctx.repo.fullName)}:${pc.yellow(environment)}`);
     console.log(`  ${pc.dim('Files')}   ${selected.map((f) => f.filename).join(', ')}`);
-    console.log(`  ${pc.dim('TTL')}     ${options.ttl ?? pc.green('permanent')}`);
+    console.log(`  ${pc.dim('TTL')}     ${ttlLabel}`);
     console.log(`  ${pc.dim('Key')}     ${pc.dim(keyFingerprint(masterKey))}${isNewKey ? pc.green(' (new)') : ''}`);
     console.log();
 

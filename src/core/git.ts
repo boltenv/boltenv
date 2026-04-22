@@ -5,8 +5,53 @@ import type { GitRepo } from '../types/index.js';
 import { BRANCH_ENV_MAP, DEFAULT_ENVIRONMENT } from '../constants.js';
 import { Errors } from '../utils/errors.js';
 
-const HTTPS_PATTERN = /^https?:\/\/github\.com\/([^/]+)\/([^/]+?)(?:\.git)?$/;
-const SSH_PATTERN = /^git@github\.com:([^/]+)\/([^/]+?)(?:\.git)?$/;
+// All patterns that can point to a GitHub repo:
+//
+// HTTPS:
+//   https://github.com/owner/repo.git
+//   https://github.com/owner/repo
+//   http://github.com/owner/repo.git
+//   https://user@github.com/owner/repo.git          (authenticated clone)
+//   https://oauth2:TOKEN@github.com/owner/repo.git  (CI token auth)
+//   https://x-access-token:TOKEN@github.com/...     (GitHub App auth)
+//
+// SSH (standard):
+//   git@github.com:owner/repo.git
+//   git@github.com:owner/repo
+//
+// SSH (alias — ~/.ssh/config Host can be ANYTHING):
+//   git@github.com-personal:owner/repo.git
+//   git@gh-work:owner/repo.git
+//   git@my-github:owner/repo.git
+//   git@company-gh:owner/repo.git
+//
+// SSH protocol:
+//   ssh://git@github.com/owner/repo.git
+//   ssh://git@github.com:22/owner/repo.git           (with port)
+//   ssh://git@gh-work/owner/repo.git                  (alias)
+//   ssh://git@gh-work:2222/owner/repo.git             (alias + port)
+//
+// Git protocol:
+//   git://github.com/owner/repo.git
+
+// HTTPS — github.com with optional credentials before @
+const HTTPS_PATTERN = /^https?:\/\/(?:[^@]+@)?github\.com\/([^/]+)\/([^/]+?)(?:\.git)?$/;
+
+// SSH shorthand — git@<any-host>:owner/repo (host can be any SSH alias)
+const SSH_SCP_PATTERN = /^git@[^:]+:([^/]+)\/([^/]+?)(?:\.git)?$/;
+
+// SSH protocol — ssh://git@<host>[:port]/owner/repo
+const SSH_PROTOCOL_PATTERN = /^ssh:\/\/git@[^/]+\/([^/]+)\/([^/]+?)(?:\.git)?$/;
+
+// Git protocol — git://<host>/owner/repo
+const GIT_PROTOCOL_PATTERN = /^git:\/\/[^/]+\/([^/]+)\/([^/]+?)(?:\.git)?$/;
+
+const OWNER_REPO_PATTERNS = [
+  HTTPS_PATTERN,
+  SSH_SCP_PATTERN,
+  SSH_PROTOCOL_PATTERN,
+  GIT_PROTOCOL_PATTERN,
+];
 
 /**
  * Detect the GitHub repository from the current working directory.
@@ -72,21 +117,17 @@ function parseGitConfig(cwd: string): string | null {
 }
 
 /**
- * Parse a GitHub URL (HTTPS or SSH) into owner/repo.
+ * Parse a GitHub URL (HTTPS, SSH, git protocol) into owner/repo.
+ * Accepts any SSH host alias since developers configure custom hosts in ~/.ssh/config.
  */
 export function parseGitHubUrl(url: string): GitRepo {
-  const httpsMatch = url.match(HTTPS_PATTERN);
-  if (httpsMatch) {
-    const owner = httpsMatch[1]!;
-    const repo = httpsMatch[2]!;
-    return { owner, repo, fullName: `${owner}/${repo}` };
-  }
-
-  const sshMatch = url.match(SSH_PATTERN);
-  if (sshMatch) {
-    const owner = sshMatch[1]!;
-    const repo = sshMatch[2]!;
-    return { owner, repo, fullName: `${owner}/${repo}` };
+  for (const pattern of OWNER_REPO_PATTERNS) {
+    const match = url.match(pattern);
+    if (match) {
+      const owner = match[1]!;
+      const repo = match[2]!;
+      return { owner, repo, fullName: `${owner}/${repo}` };
+    }
   }
 
   throw Errors.gitRemoteParseError(url);

@@ -14,6 +14,7 @@ import { registerAccount } from './commands/account.js';
 import { registerTeam } from './commands/team.js';
 import { registerUpgrade } from './commands/upgrade.js';
 import { registerSearch } from './commands/search.js';
+import { registerDoctor } from './commands/doctor.js';
 import { getFeatureFlags } from './core/feature-flags.js';
 import { printLogo } from './utils/branding.js';
 
@@ -62,6 +63,7 @@ export async function createProgram(): Promise<Command> {
       if (flags.teams) console.log(`    ${pc.yellow('boltenv team')}       Manage team members`);
       if (flags.upgrade) console.log(`    ${pc.yellow('boltenv upgrade')}    Upgrade plan`);
       console.log(`    ${pc.yellow('boltenv whoami')}     Show current context`);
+      console.log(`    ${pc.yellow('boltenv doctor')}     Diagnose setup & auth issues`);
       console.log('');
       console.log(pc.dim(`  Run boltenv <cmd> --help for details`));
       console.log('');
@@ -75,6 +77,7 @@ export async function createProgram(): Promise<Command> {
   registerLs(program);
   registerWhoami(program);
   registerAccount(program);
+  registerDoctor(program);
 
   // Conditionally registered based on feature flags
   if (flags.push) registerPush(program);

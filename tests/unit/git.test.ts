@@ -61,16 +61,163 @@ describe('git', () => {
       });
     });
 
+    // SSH alias patterns — ~/.ssh/config Host can be anything
+    it('should parse SSH alias with github.com-suffix', () => {
+      const result = parseGitHubUrl('git@github.com-404persona:404persona/videopur.git');
+      expect(result).toEqual({
+        owner: '404persona',
+        repo: 'videopur',
+        fullName: '404persona/videopur',
+      });
+    });
+
+    // Regression — this exact URL shape was reported failing in the wild
+    // before the parser was widened. Keep as an anchor so we never regress.
+    it('should parse the reported github.com-anastanvir:spoiledwit/xoblack URL', () => {
+      const result = parseGitHubUrl('git@github.com-anastanvir:spoiledwit/xoblack.git');
+      expect(result).toEqual({
+        owner: 'spoiledwit',
+        repo: 'xoblack',
+        fullName: 'spoiledwit/xoblack',
+      });
+    });
+
+    it('should parse SSH alias without .git suffix', () => {
+      const result = parseGitHubUrl('git@github.com-work:myorg/myrepo');
+      expect(result).toEqual({
+        owner: 'myorg',
+        repo: 'myrepo',
+        fullName: 'myorg/myrepo',
+      });
+    });
+
+    it('should parse arbitrary SSH alias (gh-work)', () => {
+      const result = parseGitHubUrl('git@gh-work:company/project.git');
+      expect(result).toEqual({
+        owner: 'company',
+        repo: 'project',
+        fullName: 'company/project',
+      });
+    });
+
+    it('should parse arbitrary SSH alias (my-github)', () => {
+      const result = parseGitHubUrl('git@my-github:owner/repo.git');
+      expect(result).toEqual({
+        owner: 'owner',
+        repo: 'repo',
+        fullName: 'owner/repo',
+      });
+    });
+
+    it('should parse short SSH alias (gh)', () => {
+      const result = parseGitHubUrl('git@gh:owner/repo.git');
+      expect(result).toEqual({
+        owner: 'owner',
+        repo: 'repo',
+        fullName: 'owner/repo',
+      });
+    });
+
+    // HTTPS with credentials (CI/CD tokens)
+    it('should parse HTTPS with user credentials', () => {
+      const result = parseGitHubUrl('https://user@github.com/owner/repo.git');
+      expect(result).toEqual({
+        owner: 'owner',
+        repo: 'repo',
+        fullName: 'owner/repo',
+      });
+    });
+
+    it('should parse HTTPS with oauth2 token (CI)', () => {
+      const result = parseGitHubUrl('https://oauth2:ghp_abc123@github.com/owner/repo.git');
+      expect(result).toEqual({
+        owner: 'owner',
+        repo: 'repo',
+        fullName: 'owner/repo',
+      });
+    });
+
+    it('should parse HTTPS with x-access-token (GitHub App)', () => {
+      const result = parseGitHubUrl('https://x-access-token:ghs_token@github.com/owner/repo.git');
+      expect(result).toEqual({
+        owner: 'owner',
+        repo: 'repo',
+        fullName: 'owner/repo',
+      });
+    });
+
+    // SSH protocol URLs
+    it('should parse ssh:// protocol URL', () => {
+      const result = parseGitHubUrl('ssh://git@github.com/owner/repo.git');
+      expect(result).toEqual({
+        owner: 'owner',
+        repo: 'repo',
+        fullName: 'owner/repo',
+      });
+    });
+
+    it('should parse ssh:// with port', () => {
+      const result = parseGitHubUrl('ssh://git@github.com:22/owner/repo.git');
+      expect(result).toEqual({
+        owner: 'owner',
+        repo: 'repo',
+        fullName: 'owner/repo',
+      });
+    });
+
+    it('should parse ssh:// with alias host', () => {
+      const result = parseGitHubUrl('ssh://git@gh-work/owner/repo.git');
+      expect(result).toEqual({
+        owner: 'owner',
+        repo: 'repo',
+        fullName: 'owner/repo',
+      });
+    });
+
+    it('should parse ssh:// without .git suffix', () => {
+      const result = parseGitHubUrl('ssh://git@github.com/owner/repo');
+      expect(result).toEqual({
+        owner: 'owner',
+        repo: 'repo',
+        fullName: 'owner/repo',
+      });
+    });
+
+    // Git protocol
+    it('should parse git:// protocol URL', () => {
+      const result = parseGitHubUrl('git://github.com/owner/repo.git');
+      expect(result).toEqual({
+        owner: 'owner',
+        repo: 'repo',
+        fullName: 'owner/repo',
+      });
+    });
+
+    it('should parse HTTP URL', () => {
+      const result = parseGitHubUrl('http://github.com/owner/repo.git');
+      expect(result).toEqual({
+        owner: 'owner',
+        repo: 'repo',
+        fullName: 'owner/repo',
+      });
+    });
+
+    // Invalid URLs
     it('should throw for non-GitHub HTTPS URL', () => {
       expect(() =>
         parseGitHubUrl('https://gitlab.com/owner/repo.git'),
       ).toThrow('Cannot parse GitHub remote URL');
     });
 
-    it('should throw for non-GitHub SSH URL', () => {
-      expect(() =>
-        parseGitHubUrl('git@gitlab.com:owner/repo.git'),
-      ).toThrow('Cannot parse GitHub remote URL');
+    it('should parse non-GitHub SSH URLs (API validates later)', () => {
+      // We accept any SSH host since it could be an alias for github.com.
+      // The boltenv API will reject non-GitHub repos at request time.
+      const result = parseGitHubUrl('git@gitlab.com:owner/repo.git');
+      expect(result).toEqual({
+        owner: 'owner',
+        repo: 'repo',
+        fullName: 'owner/repo',
+      });
     });
 
     it('should throw for invalid URL', () => {

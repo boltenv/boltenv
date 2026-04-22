@@ -1,6 +1,6 @@
 {
   "name": "@boltenv.dev/cli",
-  "version": "3.6.0",
+  "version": "3.9.0",
   "description": "AirDrop for .env files — push/pull env vars via GitHub repo access",
   "type": "module",
   "bin": {
@@ -14,7 +14,8 @@
     "test:coverage": "vitest run --coverage",
     "lint": "eslint src/ tests/",
     "format": "prettier --write .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
   },
   "engines": {
     "node": ">=22.0.0"

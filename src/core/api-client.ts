@@ -162,8 +162,11 @@ async function handleErrorResponse(response: Response, repo: string): Promise<ne
   }
 
   const message = sanitizeForTerminal(errorBody?.error ?? response.statusText);
+  const serverHint = errorBody?.hint ? sanitizeForTerminal(errorBody.hint) : undefined;
 
   switch (response.status) {
+    case 400:
+      throw Errors.apiBadRequest(message, serverHint);
     case 401:
       throw Errors.apiUnauthorized();
     case 403:

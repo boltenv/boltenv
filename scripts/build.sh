@@ -28,11 +28,6 @@ npx esbuild dist/index.js \
 
 echo "  Bundle: dist/bundle.mjs ($(du -h dist/bundle.mjs | cut -f1))"
 
-# Step 3: For now, the CLI runs via Node.js
-# SEA binary build requires additional tooling and is platform-specific.
-# For local development, use: npx tsx src/index.ts
-# For production, use: node dist/index.js
-
 echo ""
 echo "Build complete."
 echo "  Run locally:  npx tsx src/index.ts --help"

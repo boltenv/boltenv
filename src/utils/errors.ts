@@ -36,6 +36,24 @@ export function sanitizeForTerminal(input: string): string {
   return input.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '').substring(0, 500);
 }
 
+/**
+ * Build a human-readable rate-limit hint from GitHub's `x-ratelimit-*` headers.
+ */
+function buildRateLimitHint(
+  remaining: string | null,
+  resetEpoch: string | null,
+): string {
+  const fallback = 'Wait a few minutes and try again.';
+  if (!resetEpoch) return fallback;
+  const resetMs = Number(resetEpoch) * 1000;
+  if (!Number.isFinite(resetMs)) return fallback;
+  const waitSec = Math.max(0, Math.ceil((resetMs - Date.now()) / 1000));
+  if (waitSec === 0) return fallback;
+  const mins = Math.ceil(waitSec / 60);
+  const remainingLabel = remaining !== null ? `${remaining} remaining` : '0 remaining';
+  return `Rate limit resets in ~${mins} minute${mins === 1 ? '' : 's'} (${remainingLabel}).`;
+}
+
 export const Errors = {
   notAuthenticated: () =>
     new BoltenvError(
@@ -68,7 +86,11 @@ export const Errors = {
     new BoltenvError(
       `Cannot parse GitHub remote URL: ${sanitizeUrl(url)}`,
       'GIT_REMOTE_PARSE_ERROR',
-      'Expected format: https://github.com/owner/repo.git or git@github.com:owner/repo.git',
+      'Expected formats:\n'
+      + '  • https://github.com/owner/repo.git\n'
+      + '  • git@github.com:owner/repo.git\n'
+      + '  • git@<ssh-alias>:owner/repo.git\n'
+      + '  • ssh://git@github.com/owner/repo.git',
     ),
 
   decryptionFailed: () =>
@@ -123,6 +145,13 @@ export const Errors = {
       `Invalid TTL format: "${input}"`,
       'INVALID_TTL',
       'Use formats like "7d", "24h", "30m", or "3600s".\nMin: 60s, Max: 90d.',
+    ),
+
+  apiBadRequest: (message: string, serverHint?: string) =>
+    new BoltenvError(
+      `Invalid request: ${message}`,
+      'API_BAD_REQUEST',
+      serverHint ?? 'The request was rejected by the server. Run "boltenv doctor" for diagnostics, or try updating: npm i -g @boltenv.dev/cli@latest',
     ),
 
   apiRequestFailed: (status: number, message: string) =>
@@ -280,4 +309,57 @@ export const Errors = {
       'INVALID_ROLE',
       'Allowed roles: admin, member',
     ),
+
+  // ---------------------------------------------------------------------------
+  // Classified GitHub errors — thrown by github-error-classifier.
+  // Each one is targeted at a specific real-world GitHub failure mode so users
+  // know exactly what to do instead of seeing a generic 401/403/404.
+  // ---------------------------------------------------------------------------
+
+  githubTokenInvalid: () =>
+    new BoltenvError(
+      'Your GitHub token is invalid, expired, or revoked.',
+      'GITHUB_TOKEN_INVALID',
+      'Either:\n'
+        + '  • Run "boltenv login" to get a fresh token\n'
+        + '  • Set BOLTENV_TOKEN to a new PAT with "repo" scope',
+    ),
+
+  githubRateLimited: (remaining: string | null, resetEpoch: string | null) =>
+    new BoltenvError(
+      'GitHub API rate limit exceeded.',
+      'GITHUB_RATE_LIMITED',
+      buildRateLimitHint(remaining, resetEpoch),
+    ),
+
+  samlAuthorizationRequired: (org: string | null, ssoUrl: string) => {
+    const safeOrg = org !== null ? sanitizeForTerminal(org) : null;
+    const safeSsoUrl = sanitizeForTerminal(ssoUrl);
+    return new BoltenvError(
+      safeOrg
+        ? `Your GitHub token is not authorized for the "${safeOrg}" organization's SAML SSO.`
+        : "Your GitHub token is not authorized for this organization's SAML SSO.",
+      'SAML_AUTH_REQUIRED',
+      'Authorize your token for the org on GitHub:\n'
+        + `  1. Visit: ${safeSsoUrl}\n`
+        + '  2. Click "Configure SSO" next to the token\n'
+        + '  3. Click "Authorize" for the organization\n'
+        + '\n'
+        + 'Then re-run your boltenv command.',
+    );
+  },
+
+  repoNotFoundOrNoAccess: (repo: string) => {
+    const safeRepo = sanitizeForTerminal(repo);
+    return new BoltenvError(
+      `Repository "${safeRepo}" not found, or you do not have access to it.`,
+      'REPO_NOT_FOUND_OR_NO_ACCESS',
+      'GitHub returns the same error for both cases (by design). Check:\n'
+        + '  • Spelling of the repo name (owner/repo)\n'
+        + '  • Whether you are a collaborator or org member with repo access\n'
+        + '  • Whether your token has "repo" scope\n'
+        + '\n'
+        + 'Run "boltenv doctor" for a full diagnosis.',
+    );
+  },
 } as const;

@@ -17,6 +17,10 @@
   <a href="https://github.com/boltenv/boltenv/stargazers"><img src="https://img.shields.io/github/stars/boltenv/boltenv?style=social" alt="GitHub stars" /></a>
 </p>
 
+<p align="center">
+  <a href="https://www.producthunt.com/products/join-the-waitlist-boltenv?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-join-the-waitlist-boltenv" target="_blank" rel="noopener noreferrer"><img alt="Join the Waitlist — boltenv - Airdrop for Developers | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1115278&amp;theme=light&amp;t=1775638256387"></a>
+</p>
+
 ---
 
 ### The problem
